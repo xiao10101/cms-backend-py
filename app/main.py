@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 
-app = FastAPI(title="CMS Admin API")
+from app.core.config import get_settings
+settings = get_settings()
+app = FastAPI(title=settings.app_name, docs_url="/docs" if settings.debug else None)
+
 
 @app.get("/health")
-def health():
+async def health():
     return {"status": "ok"}
