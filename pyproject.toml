@@ -26,6 +26,7 @@ dev = [
 
 [project.scripts]
 dev = "app.cli:dev"
+seed = "scripts.seed:seed"
 
 [build-system]
 requires=["hatchling"]
