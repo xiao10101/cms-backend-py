@@ -1,8 +1,7 @@
 import uuid
 from datetime import datetime
-
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import MetaData, DateTime
+from sqlalchemy import MetaData, DateTime, ForeignKey
 from sqlalchemy.sql.functions import func
 
 naming_convention = {
@@ -14,8 +13,16 @@ naming_convention = {
 }
 
 
+def gen_id():
+    return uuid.uuid4().hex
+
+
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=naming_convention)
+
+
+class TenantIdMixin:
+    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"))
 
 
 class TimestampMixin:
@@ -29,6 +36,3 @@ class TimestampMixin:
         server_default=func.now(),
         onupdate=func.now(),
     )
-
-def gen_id():
-    return uuid.uuid4().hex

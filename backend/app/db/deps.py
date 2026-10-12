@@ -3,6 +3,7 @@ from fastapi import Request
 from jwt import ExpiredSignatureError, InvalidTokenError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.context import current_tenant_id
 from app.core.exception import AppException
 from app.core.security import decode_token
 from app.db.session import async_session_factory
@@ -33,3 +34,7 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
     if user is None:
         raise AppException(401, "token 无效")
     return user
+
+async def get_current_tenant_id(user: User = Depends(get_current_user)) -> str:
+    current_tenant_id.set(user.tenant_id)
+    return user.tenant_id

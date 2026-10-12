@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Index, String, ForeignKey, Integer, DateTime, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, gen_id, TimestampMixin
+from app.db.base import Base, gen_id, TimestampMixin, TenantIdMixin
 from app.models.association import content_tags
 
 if TYPE_CHECKING:
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from app.models.tag import Tag
 
 
-class Content(Base, TimestampMixin):
+class Content(Base, TimestampMixin, TenantIdMixin):
     __tablename__ = "contents"
     __table_args__ = (
         Index("ix_content_tenant_status", "tenant_id", "status"),
@@ -22,7 +22,6 @@ class Content(Base, TimestampMixin):
     )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_id)
-    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"))
     category_id: Mapped[str] = mapped_column(ForeignKey("categories.id"))
     author_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     # draft|pending|approved|published|rejected|archived
