@@ -1,4 +1,5 @@
 from typing import Generic, TypeVar, Any
+
 from app.schemas.base import CamelModel
 
 T = TypeVar("T")
@@ -14,5 +15,12 @@ class ApiResponse(CamelModel, Generic[T]):
         return cls(code=0, message="ok", data=data)
 
     @classmethod
-    def fail(cls, code: int, message: str, data: Any=None):
+    def fail(cls, code: int, message: str, data: Any = None):
         return cls(code=code, message=message, data=data)
+
+
+class Page(CamelModel, Generic[T]):
+    items: list[T]
+    total: int
+    page: int
+    page_size: int

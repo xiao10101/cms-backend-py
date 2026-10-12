@@ -14,6 +14,7 @@ class UserOut(CamelModel):
     name: str
     email: str
     status: str
+    tenant_id: str
     roles: list[str] = []
 
 class TenantOut(CamelModel):

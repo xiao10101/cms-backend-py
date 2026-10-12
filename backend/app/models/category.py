@@ -1,13 +1,12 @@
 from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, gen_id, TimestampMixin
+from app.db.base import Base, gen_id, TimestampMixin, TenantIdMixin
 
 
-class Category(Base, TimestampMixin):
+class Category(Base, TimestampMixin, TenantIdMixin):
     __tablename__ = "categories"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_id)
-    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"))
     name: Mapped[str] = mapped_column(String(100))
     slug: Mapped[str] = mapped_column(String(100))
     parent_id: Mapped[str | None] = mapped_column(ForeignKey("categories.id"), nullable=True)

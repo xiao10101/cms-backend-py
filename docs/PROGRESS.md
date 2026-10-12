@@ -29,12 +29,12 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前阶段 | 阶段 2 · 多租户（微任务待拆解） |
+| 当前阶段 | 阶段 2 · 多租户 |
 | 当前子任务 | — |
-| 下一步动作 | 会话开始时拆解阶段 2 微任务（请求上下文 / 全局过滤 / 越权防护 / 租户 CRUD） |
+| 下一步动作 | T2.3a 查询越权验证（造第二个租户） |
 | 阻塞项 | 无 |
-| 总体进度 | 1 / 8 阶段；28 / 28 微任务（阶段 1） |
-| 最近更新 | 2026-10-06 |
+| 总体进度 | 1 / 8 阶段；阶段 2 进行中 4 / 7 微任务 |
+| 最近更新 | 2026-10-12 |
 
 ---
 
@@ -44,7 +44,6 @@
 | --- | --- | --- | --- | --- |
 | 1 | 地基 + 认证 | FastAPI 启动流程、pydantic-settings、async engine/session、Alembic、统一响应与异常、JWT 全链路、`Depends` 体系 | 已完成 | 2026-10-06 |
 | 2 | 多租户 | 请求上下文提取、`with_loader_criteria` 全局过滤、update/delete 越权防护 | 进行中 | — |
-| 2 | 多租户 | 请求上下文提取、`with_loader_criteria` 全局过滤、update/delete 越权防护 | 未开始 | — |
 | 3 | RBAC | 依赖工厂 `require_permission()`、权限码常量收敛、权限集下发 | 未开始 | — |
 | 4 | 内容主线 | 自引用树、翻译表 upsert、`selectinload` 防 N+1、软删除、组合索引 | 未开始 | — |
 | 5 | 版本管理 | 保存即快照、回滚 = 快照写回 + 版本递增、事务一致性 | 未开始 | — |
@@ -99,7 +98,15 @@
 
 ### 阶段 2 · 多租户
 
-> 临近时细拆。
+| # | 微任务 | 完成信号（验收口径） | 状态 | 完成日期 | 产出 / 证据 | 备注 |
+| --- | --- | --- | --- | --- | --- | --- |
+| T2.1a | 概念课 + 现状梳理 | 说清租户上下文要解决的问题；盘点表归属 | 已完成 | 2026-10-12 | 8/8 直连租户表识别精准；派生隔离（关联表/子表/tenants 自身）导师补讲 | 概念：直接隔离 vs 派生隔离 |
+| T2.1b | 请求上下文容器 | REPL/脚本验证 ContextVar 协程隔离 | 已完成 | 2026-10-12 | set/get/reset 三段式 + gather 多协程各读各的；scratch.py 已删 | 两个踩坑：gather 忘 await（floating promise）/ run 收协程不收 Future |
+| T2.2a | get_current_tenant_id 依赖 | 临时路由返回当前用户 tenant_id | 已完成 | 2026-10-12 | curl 双绿（无 token 401 / 有效 token 返回租户） | 经一轮 review：手动调用依赖 → 改 Depends 注入；删死分支（fail-fast） |
+| T2.2b | TenantIdMixin + 全局过滤 | SQL 日志可见自动注入的 WHERE tenant_id | 已完成 | 2026-10-12 | 8 模型挂 mixin（autogenerate 空迁移验证）；session.py do_orm_execute 拦截器；SQL 日志确认 WHERE 注入 + 无上下文放行 | 关键决策：上下文 None 时放行（鸡生蛋问题），安全靠 T2.3 越权测试补偿；卫语句跳过 relationship/column load |
+| T2.3a | 查询越权验证 | A 租户 token 查 B 租户数据 → 不可见 | 已完成 | 2026-10-12 | 种子扩至双租户；双 token 请求同接口各见 1 条、tenant_id 各归各（DB 实有 2 条用户） | 幂等种子 + 复合唯一约束知识点落地 |
+| T2.3b | 写操作越权防护 | B 租户 token 改 A 租户数据 → 404/403 | 已完成 | 2026-10-12 | 临时 PATCH 路由四条 curl：本租户 200 ×2 / 跨租户 404 ×2 | 模式：tenant_id 进 WHERE + rowcount==0 → 404（隐藏资源存在性）；与阶段 6 乐观锁同源 |
+| T2.4 | 租户 CRUD + 阶段验收 | 前端联调 + docs/06 验收清单全绿 | 进行中 | — | T2.4a GET /tenants 分页+搜索（Query 校验、Page[T] 泛型、双查询共享 WHERE）；T2.4b POST 新增（约束兜底+IntegrityError→409、refresh）；用户自主发现输入校验缺口→TenantCreateReq 上 Field/Literal 约束；管理路由补认证闸门（无 token 401） | 权限守卫 tenant:manage 留待阶段 3；契约偏差 X-Tenant-Id header → token 派生，收尾修 docs/03 |
 
 ### 阶段 3 · RBAC
 
@@ -182,3 +189,6 @@
 | 2026-10-06 | T1.8a 完成验收（轮换/复用检测/jti 修复三连验证）；进入 T1.8b（登出） |
 | 2026-10-06 | T1.8b 完成验收（登出四连验证）；T1.9a 提前、T1.8c 后移；进入 T1.9a |
 | 2026-10-06 | T1.9a/T1.8c 完成验收（profile + 无感刷新联调）；T1.9b 阶段验收通过（八项回归 + 浏览器 401 跳登录）——**阶段 1 完成（28/28）**，进入阶段 2 |
+| 2026-10-12 | 阶段 2 拆解为 7 个微任务（T2.1a–T2.4）；T2.1a/T2.1b 完成验收（概念梳理 + ContextVar 协程隔离）；进入 T2.2a |
+| 2026-10-12 | T2.2a 完成验收（get_current_tenant_id 依赖，review 一轮通过）；进入 T2.2b |
+| 2026-10-12 | T2.2b 完成验收（TenantIdMixin 8 表挂载 + with_loader_criteria 全局过滤，SQL 日志实证）——多租户核心机制落地；进入 T2.3a |

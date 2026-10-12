@@ -1,14 +1,13 @@
 from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, TimestampMixin, gen_id
+from app.db.base import Base, TimestampMixin, gen_id, TenantIdMixin
 
 
-class Media(Base, TimestampMixin):
+class Media(Base, TimestampMixin, TenantIdMixin):
     __tablename__ = "media"
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_id)
-    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"))
     filename: Mapped[str] = mapped_column(String(255))
     url: Mapped[str] = mapped_column(String(500))
     mime_type: Mapped[str] = mapped_column(String(100))

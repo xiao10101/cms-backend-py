@@ -1,17 +1,17 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, DateTime, UniqueConstraint
+from sqlalchemy import String, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, TimestampMixin, gen_id
+from app.db.base import Base, TimestampMixin, gen_id, TenantIdMixin
 from app.models.association import user_roles
 
 if TYPE_CHECKING:
     from app.models.role import Role
 
 
-class User(Base, TimestampMixin):
+class User(Base, TimestampMixin, TenantIdMixin):
     __tablename__ = "users"
 
     __table_args__ = (
@@ -19,7 +19,6 @@ class User(Base, TimestampMixin):
     )
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_id)
-    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"))
     username: Mapped[str] = mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(100))

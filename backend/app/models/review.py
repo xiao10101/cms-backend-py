@@ -4,17 +4,16 @@ from typing import TYPE_CHECKING
 from sqlalchemy import String, ForeignKey, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, TimestampMixin, gen_id
+from app.db.base import Base, TimestampMixin, gen_id, TenantIdMixin
 
 if TYPE_CHECKING:
     from app.models.user import User
     from app.models.content import Content
 
 
-class Review(Base, TimestampMixin):
+class Review(Base, TimestampMixin, TenantIdMixin):
     __tablename__ = "reviews"
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=gen_id)
-    tenant_id: Mapped[str] = mapped_column(ForeignKey("tenants.id"))
     content_id: Mapped[str] = mapped_column(ForeignKey("contents.id", ondelete="CASCADE"))
     submitter_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending|approved|rejected
