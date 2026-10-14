@@ -8,6 +8,7 @@ class LoginRequest(CamelModel):
     password: str
     tenant_code: str
 
+
 class UserOut(CamelModel):
     id: str
     username: str
@@ -17,6 +18,7 @@ class UserOut(CamelModel):
     tenant_id: str
     roles: list[str] = []
 
+
 class TenantOut(CamelModel):
     id: str
     name: str
@@ -24,6 +26,9 @@ class TenantOut(CamelModel):
     status: str
     plan: str
     max_users: int
+    contact_name: str | None = None
+    contact_email: str | None = None
+
 
 class LoginResponse(CamelModel):
     access_token: str
@@ -32,9 +37,11 @@ class LoginResponse(CamelModel):
     tenant: TenantOut
     permissions: list[str] = []
 
+
 class TokenResponse(CamelModel):
     access_token: str
     refresh_token: str
+
 
 class RefreshRequest(CamelModel):
     refresh_token: str

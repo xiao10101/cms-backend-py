@@ -32,8 +32,11 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
       logout: () =>
         set({ accessToken: null, refreshToken: null, user: null, permissions: [] }),
+      // TODO(阶段 3 RBAC)：VITE_BYPASS_PERMISSION=true 时跳过权限判断（后端权限守卫尚未实现）
       hasPermission: (code) =>
-        get().permissions.includes("*") || get().permissions.includes(code),
+        import.meta.env.VITE_BYPASS_PERMISSION === "true" ||
+        get().permissions.includes("*") ||
+        get().permissions.includes(code),
     }),
     { name: "cms-auth" }
   )

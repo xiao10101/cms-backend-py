@@ -67,4 +67,14 @@ async function tryRefreshToken(): Promise<boolean> {
   }
 }
 
+// 从各类错误（业务 code 错误 / HTTP 错误）中提取可展示给用户的提示文案
+export function getApiErrorMessage(err: unknown, fallback = "操作失败"): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { message?: string } | undefined;
+    return data?.message || err.message || fallback;
+  }
+  if (err instanceof Error) return err.message || fallback;
+  return fallback;
+}
+
 export default http;

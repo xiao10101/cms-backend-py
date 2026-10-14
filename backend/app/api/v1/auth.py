@@ -29,6 +29,7 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     access, new_refresh = await refresh_token(db, body.refresh_token)
     return ApiResponse.ok(TokenResponse(access_token=access, refresh_token=new_refresh))
 
+
 @router.post("/logout", response_model=ApiResponse)
 async def logout(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     await logout_user(db, body.refresh_token)
@@ -40,29 +41,21 @@ async def profile(user: User = Depends(get_current_user), tenant_id: str = Depen
     user.tenant_id = tenant_id
     return ApiResponse.ok(UserOut.model_validate(user))
 
-@router.get("/tenant-debug")
-async def tenant_debug(
-    db: AsyncSession = Depends(get_db),
-    tenant_id: str = Depends(get_current_tenant_id),   # ← 关键：先 set 上下文
-):
-    result = await db.execute(select(User))
-    return {"count": len(result.scalars().all()), "tenant_id": tenant_id}
-
-@router.patch("/debug/users/{user_id}/status")
-async def debug_update_user_staus(
-    user_id: str,
-    db: AsyncSession = Depends(get_db),
-    tenant_id: str = Depends(get_current_tenant_id),
-):
-    result = await db.execute(
-        update(User)
-        .where(
-            User.id == user_id,
-            User.tenant_id == tenant_id
-        )
-        .values(status='active')
-    )
-    await db.commit()
-    if result.rowcount == 0:
-        raise AppException(404, "用户不存在")
-    return ApiResponse.ok(None)
+# @router.patch("/debug/users/{user_id}/status")
+# async def debug_update_user_staus(
+#     user_id: str,
+#     db: AsyncSession = Depends(get_db),
+#     tenant_id: str = Depends(get_current_tenant_id),
+# ):
+#     result = await db.execute(
+#         update(User)
+#         .where(
+#             User.id == user_id,
+#             User.tenant_id == tenant_id
+#         )
+#         .values(status='active')
+#     )
+#     await db.commit()
+#     if result.rowcount == 0:
+#         raise AppException(404, "用户不存在")
+#     return ApiResponse.ok(None)

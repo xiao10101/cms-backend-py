@@ -154,6 +154,7 @@
 | 2026-10-05 | #2 教训：T1.1b 原完成信号只验「文件存在」未验「依赖齐全」；docs/08 已补充 `uv tree` 核对步骤 | 流程 | — | 已改进 |
 | 2026-10-05 | #3 索引覆盖计划：user_roles.role_id / content_tags.tag_id（关联表反向）及 reviews 等表的 tenant_id 无索引；PG 不为 FK 自动建索引 | 阶段 4 内容域 + T1.9 阶段验收 | T1.4 期间统一梳理 | 已登记 |
 | 2026-10-05 | #4 requestId/traceId 需求（用户提出，公司实践背书）：阶段 7 实现时决策响应头 X-Request-Id vs body 字段（后者需改 docs/03 契约），并补日志系统 + contextvars 设计 | 阶段 7 工程化收尾 | 阶段 7 第一个待办 | 已登记 |
+| 2026-10-13 | #5 阶段 2 已知安全缺口：/tenants 管理接口（POST/PATCH/DELETE/分页列表）仅认证未授权，任何登录用户可跨租户管理平台资源。设计上属授权缺失而非隔离缺失（tenants 为平台资源，不适用租户过滤）。阶段 3 `require_permission("tenant:manage")` 落地后关闭 | 阶段 3 | 阶段 3 第一个任务 | 已登记 |
 
 ---
 

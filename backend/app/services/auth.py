@@ -28,6 +28,8 @@ async def authenticate(db: AsyncSession, username: str, password: str, tenant_co
     tenant = (await db.execute(select(Tenant).where(Tenant.code == tenant_code))).scalar_one_or_none()
     if tenant is None:
         raise AppException(401, "用户名或密码错误")
+    if tenant.status == "disabled":
+        raise AppException(403, "租户已被禁用")
     # select(User).where(User.tenant_id == tenant.id, User.username == username)
     user = (await db.execute(select(User).where(
         User.username == username,
@@ -70,6 +72,7 @@ async def refresh_token(db: AsyncSession, token: str):
 
     await db.commit()
     return access_token, refresh
+
 
 async def logout_user(db: AsyncSession, token: str):
     token_hash = hashlib.sha256(token.encode()).hexdigest()
