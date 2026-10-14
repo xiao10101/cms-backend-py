@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
 import { createTenant, deleteTenant, getTenants, updateTenant } from "@/api/tenant";
+import { getApiErrorMessage } from "@/api/http";
 import type { Tenant, TenantStatus } from "@/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -11,13 +12,19 @@ import { Switch } from "@/components/ui/Switch";
 import { Table, type Column } from "@/components/ui/Table";
 import { Pagination } from "@/components/ui/Pagination";
 import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { toast } from "@/components/ui/Toast";
 import { TenantStatusTag } from "@/components/StatusTag";
+
+const CODE_PATTERN = /^[a-z0-9-]+$/;
 
 export default function TenantList() {
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tenant | null>(null);
+  // 待删除的租户，非空时弹出二次确认
+  const [deleting, setDeleting] = useState<Tenant | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -28,10 +35,26 @@ export default function TenantList() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["tenants"] });
 
   const toggleStatus = useMutation({
-    mutationFn: (t: Tenant) => updateTenant(t.id, { status: t.status === "active" ? "disabled" : "active" }),
-    onSuccess: invalidate,
+    mutationFn: (t: Tenant) => {
+      const next: TenantStatus = t.status === "active" ? "disabled" : "active";
+      return updateTenant(t.id, { status: next }).then(() => next);
+    },
+    onSuccess: (next) => {
+      toast.success(next === "active" ? "已启用" : "已禁用");
+      invalidate();
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err, "操作失败")),
   });
-  const remove = useMutation({ mutationFn: deleteTenant, onSuccess: invalidate });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteTenant(id),
+    onSuccess: () => {
+      toast.success("删除成功");
+      setDeleting(null);
+      invalidate();
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err, "删除失败")),
+  });
 
   const columns: Column<Tenant>[] = [
     { key: "name", title: "租户名称", render: (r) => <span className="font-medium text-gray-900">{r.name}</span> },
@@ -54,7 +77,7 @@ export default function TenantList() {
           <Button size="sm" variant="outline" onClick={() => { setEditing(r); setModalOpen(true); }}>
             编辑
           </Button>
-          <Button size="sm" variant="ghost" className="text-danger" onClick={() => remove.mutate(r.id)}>
+          <Button size="sm" variant="ghost" className="text-danger" onClick={() => setDeleting(r)}>
             删除
           </Button>
         </div>
@@ -97,17 +120,42 @@ export default function TenantList() {
         onClose={() => setModalOpen(false)}
         onSaved={invalidate}
       />
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title="删除租户"
+        danger
+        loading={remove.isPending}
+        confirmText="删除"
+        content={
+          <>
+            确定删除租户 <span className="font-medium text-gray-900">{deleting?.name}</span> 吗？
+            <br />
+            删除后该租户将不再显示，此操作不可恢复。
+          </>
+        }
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+        onClose={() => setDeleting(null)}
+      />
     </div>
   );
 }
 
+interface FormErrors {
+  name?: string;
+  code?: string;
+  maxUsers?: string;
+}
+
 function TenantForm({ open, tenant, onClose, onSaved }: { open: boolean; tenant: Tenant | null; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState<Partial<Tenant>>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [ready, setReady] = useState(false);
   const queryClient = useQueryClient();
 
   if (open && !ready) {
     setForm(tenant || { status: "active", plan: "基础版", maxUsers: 20 });
+    setErrors({});
     setReady(true);
   }
 
@@ -118,8 +166,38 @@ function TenantForm({ open, tenant, onClose, onSaved }: { open: boolean; tenant:
 
   const save = useMutation({
     mutationFn: () => (tenant ? updateTenant(tenant.id, form) : createTenant(form)),
-    onSuccess: () => { close(); onSaved(); queryClient.invalidateQueries({ queryKey: ["tenants"] }); },
+    onSuccess: () => {
+      toast.success(tenant ? "保存成功" : "新增成功");
+      close();
+      onSaved();
+      queryClient.invalidateQueries({ queryKey: ["tenants"] });
+    },
+    onError: (err) => toast.error(getApiErrorMessage(err, "保存失败")),
   });
+
+  function setField(field: keyof FormErrors, value: Partial<Tenant>) {
+    setForm(value);
+    // 用户修改字段时清除该字段的错误提示
+    if (errors[field]) setErrors({ ...errors, [field]: undefined });
+  }
+
+  function validate(): boolean {
+    const next: FormErrors = {};
+    const name = (form.name || "").trim();
+    const code = (form.code || "").trim();
+    if (!name) next.name = "请输入租户名称";
+    else if (name.length < 2) next.name = "租户名称至少 2 个字符";
+    if (!code) next.code = "请输入租户编码";
+    else if (!CODE_PATTERN.test(code)) next.code = "仅支持小写字母、数字和中划线";
+    if (form.maxUsers !== undefined && form.maxUsers < 1) next.maxUsers = "成员上限至少为 1";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  function handleSubmit() {
+    if (!validate()) return;
+    save.mutate();
+  }
 
   return (
     <Modal
@@ -129,16 +207,27 @@ function TenantForm({ open, tenant, onClose, onSaved }: { open: boolean; tenant:
       footer={
         <>
           <Button variant="outline" onClick={close}>取消</Button>
-          <Button loading={save.isPending} onClick={() => save.mutate()}>保存</Button>
+          <Button loading={save.isPending} onClick={handleSubmit}>保存</Button>
         </>
       }
     >
       <div className="grid grid-cols-2 gap-4">
-        <Field label="租户名称">
-          <Input value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <Field label="租户名称" required error={errors.name}>
+          <Input
+            value={form.name || ""}
+            onChange={(e) => setField("name", { ...form, name: e.target.value })}
+            error={!!errors.name}
+            placeholder="请输入租户名称"
+          />
         </Field>
-        <Field label="租户编码">
-          <Input value={form.code || ""} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+        <Field label="租户编码" required error={errors.code}>
+          <Input
+            value={form.code || ""}
+            onChange={(e) => setField("code", { ...form, code: e.target.value })}
+            error={!!errors.code}
+            placeholder="如 acme-corp"
+            disabled={!!tenant}
+          />
         </Field>
         <Field label="套餐">
           <Select
@@ -148,8 +237,13 @@ function TenantForm({ open, tenant, onClose, onSaved }: { open: boolean; tenant:
             className="w-full"
           />
         </Field>
-        <Field label="成员上限">
-          <Input type="number" value={form.maxUsers || 20} onChange={(e) => setForm({ ...form, maxUsers: Number(e.target.value) })} />
+        <Field label="成员上限" error={errors.maxUsers}>
+          <Input
+            type="number"
+            value={form.maxUsers ?? 20}
+            onChange={(e) => setField("maxUsers", { ...form, maxUsers: Number(e.target.value) })}
+            error={!!errors.maxUsers}
+          />
         </Field>
         <Field label="联系人">
           <Input value={form.contactName || ""} onChange={(e) => setForm({ ...form, contactName: e.target.value })} />
@@ -162,11 +256,15 @@ function TenantForm({ open, tenant, onClose, onSaved }: { open: boolean; tenant:
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="mb-1.5 block text-sm text-gray-600">{label}</label>
+      <label className="mb-1.5 block text-sm text-gray-600">
+        {required && <span className="mr-0.5 text-danger">*</span>}
+        {label}
+      </label>
       {children}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }

@@ -23,3 +23,12 @@ class TenantCreateReq(CamelModel):
     max_users: int = Field(default=20, ge=1, le=10000)
     contact_name: TenantName | None = None
     contact_email: EmailStr | None = None
+
+
+class TenantUpdateReq(CamelModel):
+    name: TenantName | None = None
+    status: Literal["disabled", "active"] | None = None
+    plan: Literal["基础版", "专业版", "企业版"] | None = None
+    max_users: int = Field(default=20, ge=1, le=10000)
+    contact_name: TenantName | None = None
+    contact_email: EmailStr | None = None

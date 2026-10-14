@@ -6,8 +6,8 @@ from app.schemas.auth import TenantOut
 from app.schemas.response import ApiResponse, Page
 
 from app.db.deps import get_db, get_current_user
-from app.schemas.tenants import TenantCreateReq
-from app.services.tenant import get_all_tenants, get_tenant_page, create_tenant_service
+from app.schemas.tenants import TenantCreateReq, TenantUpdateReq
+from app.services.tenant import get_all_tenants, get_tenant_page, create_tenant_service, update_tenant, delete_tenant
 
 router = APIRouter(prefix="/tenants")
 
@@ -38,3 +38,24 @@ async def create(
 ):
     tenant = await create_tenant_service(db, new_tenant)
     return ApiResponse.ok(TenantOut.model_validate(tenant))
+
+
+@router.patch("/{tenant_id}", response_model=ApiResponse[TenantOut])
+async def update(
+        tenant_id: str,
+        body: TenantUpdateReq,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(get_current_user),
+):
+    tenant = await update_tenant(db, tenant_id, body)
+    return ApiResponse.ok(TenantOut.model_validate(tenant))
+
+
+@router.delete("/{tenant_id}", response_model=ApiResponse[TenantOut])
+async def delete(
+        tenant_id: str,
+        db: AsyncSession = Depends(get_db),
+        user: User = Depends(get_current_user),
+):
+    tenant = await delete_tenant(db, tenant_id)
+    return ApiResponse.ok(tenant)
