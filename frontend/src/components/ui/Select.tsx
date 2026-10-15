@@ -1,34 +1,40 @@
 import { forwardRef } from "react";
-import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/cn";
+import { Select as AntSelect } from "antd";
 
 export interface SelectOption {
   label: string;
   value: string;
 }
 
-export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange"> {
   options: SelectOption[];
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
+/**
+ * antd Select 适配层：保持旧版「原生 select」的用法签名
+ * （onChange 收到 { target: { value } }），页面无需改动即可获得 antd 的交互。
+ */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
-  { className, options, ...props },
+  { className, options, value, onChange, disabled, placeholder, ...props },
   ref
 ) {
   return (
-    <div className={cn("relative inline-flex", className)}>
-      <select
-        ref={ref}
-        className="h-8 w-full cursor-pointer appearance-none rounded-md border border-gray-300 bg-white pl-3 pr-8 text-sm text-gray-800 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-50"
-        {...props}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-    </div>
+    <AntSelect
+      ref={ref as never}
+      className={className}
+      style={{ minWidth: 120, width: "100%" }}
+      options={options}
+      value={(value as string) === "" ? undefined : (value as string)}
+      disabled={disabled}
+      placeholder={placeholder ?? "请选择"}
+      onChange={(v: string) =>
+        (onChange as unknown as (e: { target: { value: string } }) => void)?.({ target: { value: v } })
+      }
+      // 原生 select 的 name/aria 等属性 antd 不消费，避免透传报错
+      {...(Object.fromEntries(
+        Object.entries(props).filter(([k]) => ["id", "name"].includes(k))
+      ) as Record<string, never>)}
+    />
   );
 });

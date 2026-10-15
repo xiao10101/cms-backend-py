@@ -2,50 +2,53 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Building2, Globe2, Layers, Lock, ShieldCheck, User } from "lucide-react";
+import { Globe2, Layers, Lock, ShieldCheck, User } from "lucide-react";
+import { Button, Form, Input, Select, App as AntdApp } from "antd";
 import { login } from "@/api/auth";
 import { getAllTenants } from "@/api/tenant";
 import { useAuthStore } from "@/stores/auth";
 import { useTenantStore } from "@/stores/tenant";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+
+interface LoginFormValues {
+  username: string;
+  password: string;
+  tenantCode: string;
+}
 
 export default function Login() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const { message } = AntdApp.useApp();
   const setAuth = useAuthStore((s) => s.setAuth);
   const setTenant = useTenantStore((s) => s.setTenant);
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
-  const [tenantCode, setTenantCode] = useState("yunshan");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [form] = Form.useForm<LoginFormValues>();
 
-  const { data: tenantList } = useQuery({ queryKey: ["tenants", "all"], queryFn: getAllTenants });
+  const { data: tenantList, isLoading: tenantLoading } = useQuery({
+    queryKey: ["tenants", "all"],
+    queryFn: getAllTenants,
+  });
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/dashboard";
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  async function handleFinish(values: LoginFormValues) {
+    setSubmitting(true);
     try {
-      const data = await login({ username, password, tenantCode });
+      const data = await login(values);
       setAuth(data);
       setTenant(data.tenant);
       navigate(from, { replace: true });
     } catch (err) {
       console.error("login failed", err);
-      setError((err as Error).message || "登录失败");
+      message.error((err as Error).message || "登录失败");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
   return (
     <div className="flex min-h-screen bg-white">
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#002C77] via-primary to-primary-light p-12 text-white lg:flex">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-gradient-to-br from-[#3B1D7A] via-primary to-primary-light p-12 text-white lg:flex">
         <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
 
@@ -89,57 +92,50 @@ export default function Login() {
           <h2 className="mb-1 text-2xl font-semibold text-gray-900">{t("login.title")}</h2>
           <p className="mb-8 text-sm text-gray-500">{t("login.subtitle")}</p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="mb-1.5 block text-sm text-gray-600">{t("login.username")}</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="h-10 pl-9"
-                  placeholder="admin"
-                />
-              </div>
-            </div>
+          <Form<LoginFormValues>
+            form={form}
+            layout="vertical"
+            size="large"
+            requiredMark={false}
+            initialValues={{ username: "admin", password: "admin123" }}
+            onFinish={handleFinish}
+          >
+            <Form.Item
+              name="username"
+              label={t("login.username")}
+              rules={[{ required: true, message: "请输入用户名" }]}
+            >
+              <Input prefix={<User className="h-4 w-4 text-gray-400" />} placeholder="admin" />
+            </Form.Item>
 
-            <div>
-              <label className="mb-1.5 block text-sm text-gray-600">{t("login.password")}</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-10 pl-9"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
+            <Form.Item
+              name="password"
+              label={t("login.password")}
+              rules={[{ required: true, message: "请输入密码" }]}
+            >
+              <Input.Password prefix={<Lock className="h-4 w-4 text-gray-400" />} placeholder="••••••••" />
+            </Form.Item>
 
-            <div>
-              <label className="mb-1.5 block text-sm text-gray-600">{t("login.tenant")}</label>
-              <div className="relative">
-                <Building2 className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <Select
-                  value={tenantCode}
-                  onChange={(e) => setTenantCode(e.target.value)}
-                  options={(tenantList || []).map((tenant) => ({ label: tenant.name, value: tenant.code }))}
-                  className="w-full [&>select]:h-10 [&>select]:pl-9"
-                />
-              </div>
-            </div>
+            <Form.Item
+              name="tenantCode"
+              label={t("login.tenant")}
+              rules={[{ required: true, message: "请选择租户" }]}
+            >
+              <Select
+                loading={tenantLoading}
+                placeholder={tenantLoading ? "租户加载中…" : "请选择租户"}
+                options={(tenantList || []).map((tenant) => ({ label: tenant.name, value: tenant.code }))}
+              />
+            </Form.Item>
 
-            {error && (
-              <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-danger">{error}</div>
-            )}
+            <Form.Item style={{ marginBottom: 0 }}>
+              <Button htmlType="submit" loading={submitting} block size="large">
+                {t("login.submit")}
+              </Button>
+            </Form.Item>
+          </Form>
 
-            <Button type="submit" loading={loading} className="h-10 w-full">
-              {t("login.submit")}
-            </Button>
-          </form>
-
-          <p className="mt-6 text-center text-xs text-gray-400">{t("login.hint")}</p>
+          {/* <p className="mt-6 text-center text-xs text-gray-400">{t("login.hint")}</p> */}
         </div>
       </div>
     </div>

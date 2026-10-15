@@ -11,12 +11,16 @@ from app.schemas.response import ApiResponse
 from app.core.config import get_settings
 from app.api.v1.auth import router as auth_router
 from app.api.v1.tenant import router as tenant_router
+from app.api.v1.role import router as role_router
+from app.api.v1.permission import router as permission_router
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, docs_url="/docs" if settings.debug else None)
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(tenant_router, prefix="/api/v1")
+app.include_router(role_router, prefix="/api/v1")
+app.include_router(permission_router, prefix="/api/v1")
 
 register_exception_handlers(app)
 

@@ -7,7 +7,7 @@ from app.db.deps import get_db, get_current_user, get_current_tenant_id
 from app.models import User
 from app.schemas.auth import LoginRequest, LoginResponse, UserOut, TenantOut, TokenResponse, RefreshRequest
 from app.schemas.response import ApiResponse
-from app.services.auth import authenticate, refresh_token, logout_user
+from app.services.auth import authenticate, refresh_token, logout_user, get_user_permissions
 
 router = APIRouter(prefix="/auth")
 
@@ -20,7 +20,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         refresh_token=refresh_token_str,
         user=UserOut.model_validate(user),
         tenant=TenantOut.model_validate(tenant),
-        permissions=[],
+        permissions=get_user_permissions(user),
     ))
 
 

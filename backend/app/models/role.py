@@ -1,17 +1,18 @@
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import UniqueConstraint, String, Boolean
+from sqlalchemy import UniqueConstraint, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from app.db.base import Base, gen_id, TenantIdMixin
+from app.db.base import Base, gen_id, TenantIdMixin, TimestampMixin
 from app.models.association import user_roles
 
 if TYPE_CHECKING:
     from app.models.user import User
 
 
-class Role(Base, TenantIdMixin):
+class Role(Base, TenantIdMixin, TimestampMixin):
     __tablename__ = "roles"
     __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_role_tenant_code"),)
 
@@ -21,5 +22,6 @@ class Role(Base, TenantIdMixin):
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     permissions: Mapped[list] = mapped_column(JSONB, default=list)
     built_in: Mapped[bool] = mapped_column(Boolean, default=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     users: Mapped[list["User"]] = relationship(secondary=user_roles, back_populates="roles", lazy="selectin")

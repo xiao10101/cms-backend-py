@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permission import Permission
 from app.models import User
-from app.schemas.auth import TenantOut
 from app.schemas.response import ApiResponse, Page
+from app.schemas.tenants import TenantCreateReq, TenantUpdateReq, TenantOut
 
-from app.db.deps import get_db, get_current_user
-from app.schemas.tenants import TenantCreateReq, TenantUpdateReq
+from app.db.deps import get_db, require_permission
 from app.services.tenant import get_all_tenants, get_tenant_page, create_tenant_service, update_tenant, delete_tenant
 
 router = APIRouter(prefix="/tenants")
@@ -24,6 +24,7 @@ async def list_tenants(
         page_size: int = Query(10, ge=1, le=100, alias="pageSize"),
         keyword: str | None = None,
         db: AsyncSession = Depends(get_db),
+        user: User = Depends(require_permission(Permission.TENANT_MANAGE))
 ):
     items, total = await get_tenant_page(db, page, page_size, keyword)
     result = Page(items=[TenantOut.model_validate(t) for t in items], total=total, page=page, page_size=page_size)
@@ -34,7 +35,7 @@ async def list_tenants(
 async def create(
         new_tenant: TenantCreateReq,
         db: AsyncSession = Depends(get_db),
-        user: User = Depends(get_current_user),
+        user: User = Depends(require_permission(Permission.TENANT_MANAGE))
 ):
     tenant = await create_tenant_service(db, new_tenant)
     return ApiResponse.ok(TenantOut.model_validate(tenant))
@@ -45,7 +46,7 @@ async def update(
         tenant_id: str,
         body: TenantUpdateReq,
         db: AsyncSession = Depends(get_db),
-        user: User = Depends(get_current_user),
+        _: User = Depends(require_permission(Permission.TENANT_MANAGE))
 ):
     tenant = await update_tenant(db, tenant_id, body)
     return ApiResponse.ok(TenantOut.model_validate(tenant))
@@ -55,7 +56,7 @@ async def update(
 async def delete(
         tenant_id: str,
         db: AsyncSession = Depends(get_db),
-        user: User = Depends(get_current_user),
+        user: User = Depends(require_permission(Permission.TENANT_MANAGE))
 ):
     tenant = await delete_tenant(db, tenant_id)
     return ApiResponse.ok(tenant)

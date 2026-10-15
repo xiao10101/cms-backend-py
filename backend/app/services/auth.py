@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.exception import AppException
+from app.core.permission import Permission
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token
-from app.models import Tenant, User, RefreshToken
+from app.models import Tenant, User, RefreshToken, user_roles, Role
 
 
 def _issue_tokens(db: AsyncSession, user: User) -> tuple[str, str]:
@@ -83,3 +84,7 @@ async def logout_user(db: AsyncSession, token: str):
         return
     record.revoked_at = datetime.now(timezone.utc)
     await db.commit()
+
+
+def get_user_permissions(user: User) -> list[str]:
+    return sorted({p for role in user.roles if role.deleted_at is None for p in role.permissions})

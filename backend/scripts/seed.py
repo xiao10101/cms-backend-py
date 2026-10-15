@@ -2,9 +2,10 @@ import asyncio
 
 from sqlalchemy import select
 
+from app.core.permission import Permission
 from app.core.security import hash_password
 from app.db.session import async_session_factory
-from app.models import Tenant, User
+from app.models import Tenant, User, Role
 
 tenants_data = [
     {"name": "阿里巴巴集团", "code": "alibaba", "contact_name": "马云", "contact_email": "mayun@alibaba.com"},
@@ -58,6 +59,29 @@ async def main():
                     password=hash_password("pwd123456"),  # 统一初始密码
                 )
                 session.add(user)
+
+            # 3. 查找或创建 admin 角色
+            role = (
+                await session.execute(
+                    select(Role).where(
+                        Role.tenant_id == tenant.id,
+                        Role.code == "admin"
+                    )
+                )
+            ).scalar_one_or_none()
+            if role is None:
+                role = Role(
+                    tenant_id=tenant.id,
+                    name="管理员",
+                    code="admin",
+                    description="系统管理员",
+                    permissions=[Permission.TENANT_MANAGE]
+                )
+                session.add(role)
+                await session.flush()
+
+            if role not in user.roles:
+                user.roles.append(role)
 
         await session.commit()
         print("成功插入 10 个租户和 10 个管理员用户。")

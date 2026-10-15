@@ -6,7 +6,7 @@
 
 - 基础路径：`/api`
 - 认证：除标注 `公开` 外，均需请求头 `Authorization: Bearer <accessToken>`
-- 租户上下文：请求头 `X-Tenant-Id: <tenantId>`（登录后由前端自动注入）
+- 租户上下文：由 accessToken 解析派生（token 的 sub/claims 中携带用户所属租户），后端通过依赖注入提取；前端无需额外传租户标识（2026-10-14 修订，原设计为 `X-Tenant-Id` 请求头）
 - 统一响应包装：
 
 ```json
