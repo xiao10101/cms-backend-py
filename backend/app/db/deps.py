@@ -35,6 +35,19 @@ async def get_current_user(request: Request, db: AsyncSession = Depends(get_db))
         raise AppException(401, "token 无效")
     return user
 
+
 async def get_current_tenant_id(user: User = Depends(get_current_user)) -> str:
     current_tenant_id.set(user.tenant_id)
     return user.tenant_id
+
+
+def require_permission(code: str):
+    async def checker(user: User = Depends(get_current_user)) -> User:
+        for role in user.roles:
+            if role.deleted_at is not None:
+                continue
+            if code in role.permissions:
+                return user
+        raise AppException(403, "没有权限")
+
+    return checker

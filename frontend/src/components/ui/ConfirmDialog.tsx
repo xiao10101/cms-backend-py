@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { ExclamationCircleFilled } from "@ant-design/icons";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
 
@@ -48,11 +48,9 @@ export function ConfirmDialog({
       }
     >
       <div className="flex items-start gap-3">
-        {danger && (
-          <div className="mt-0.5 rounded-full bg-red-50 p-2">
-            <AlertTriangle className="h-4 w-4 text-danger" />
-          </div>
-        )}
+        <ExclamationCircleFilled
+          className={danger ? "mt-0.5 text-xl text-red-500" : "mt-0.5 text-xl text-primary"}
+        />
         <div className="text-sm leading-6 text-gray-600">{content}</div>
       </div>
     </Modal>

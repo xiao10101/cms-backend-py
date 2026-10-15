@@ -1,6 +1,7 @@
-from pydantic import ConfigDict
+from pydantic import field_validator
 
 from app.schemas.base import CamelModel
+from app.schemas.tenants import TenantOut
 
 
 class LoginRequest(CamelModel):
@@ -18,16 +19,10 @@ class UserOut(CamelModel):
     tenant_id: str
     roles: list[str] = []
 
-
-class TenantOut(CamelModel):
-    id: str
-    name: str
-    code: str
-    status: str
-    plan: str
-    max_users: int
-    contact_name: str | None = None
-    contact_email: str | None = None
+    @field_validator("roles", mode="before")
+    @classmethod
+    def role_to_code(cls, v):
+        return [r.code if hasattr(r, "code") else r for r in v]
 
 
 class LoginResponse(CamelModel):

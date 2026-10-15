@@ -22,7 +22,7 @@ import { getDashboardStats } from "@/api/dashboard";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 
-const PIE_COLORS = ["#0052D9", "#366EF4", "#00A870", "#ED7B2F", "#8B5CF6"];
+const PIE_COLORS = ["#7C3AED", "#8B5CF6", "#00A870", "#ED7B2F", "#F472B6"];
 
 export default function Dashboard() {
   const { data, isLoading } = useQuery({ queryKey: ["dashboard"], queryFn: getDashboardStats });
@@ -63,15 +63,15 @@ export default function Dashboard() {
               <AreaChart data={data?.trend || []}>
                 <defs>
                   <linearGradient id="trend" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0052D9" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#0052D9" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#7C3AED" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#7C3AED" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 12, fill: "#999" }} axisLine={false} tickLine={false} width={30} />
                 <Tooltip />
-                <Area type="monotone" dataKey="count" stroke="#0052D9" strokeWidth={2} fill="url(#trend)" />
+                <Area type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2} fill="url(#trend)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

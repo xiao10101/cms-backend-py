@@ -1,22 +1,22 @@
 import { forwardRef } from "react";
+import { Input as AntInput } from "antd";
 import { cn } from "@/lib/cn";
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   error?: boolean;
+  size?: "sm" | "md" | "lg";
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, error, ...props },
+  { className, error, size, ...props },
   ref
 ) {
   return (
-    <input
+    <AntInput
       ref={ref}
-      className={cn(
-        "h-8 w-full rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-800 transition-colors placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-50",
-        error && "border-danger focus:border-danger focus:ring-danger/20",
-        className
-      )}
+      status={error ? "error" : undefined}
+      size={size === "lg" ? "large" : size === "sm" ? "small" : "middle"}
+      className={cn(className)}
       {...props}
     />
   );

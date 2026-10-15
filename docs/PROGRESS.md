@@ -29,12 +29,12 @@
 
 | 项目 | 值 |
 | --- | --- |
-| 当前阶段 | 阶段 2 · 多租户 |
+| 当前阶段 | 阶段 3 · RBAC |
 | 当前子任务 | — |
-| 下一步动作 | T2.3a 查询越权验证（造第二个租户） |
+| 下一步动作 | T3.3 角色 CRUD |
 | 阻塞项 | 无 |
-| 总体进度 | 1 / 8 阶段；阶段 2 进行中 4 / 7 微任务 |
-| 最近更新 | 2026-10-12 |
+| 总体进度 | 2 / 8 阶段；阶段 3 进行中 1 / 5 微任务 |
+| 最近更新 | 2026-10-14 |
 
 ---
 
@@ -43,8 +43,8 @@
 | 阶段 | 主题 | 学习重点（摘自 docs/08） | 状态 | 完成日期 |
 | --- | --- | --- | --- | --- |
 | 1 | 地基 + 认证 | FastAPI 启动流程、pydantic-settings、async engine/session、Alembic、统一响应与异常、JWT 全链路、`Depends` 体系 | 已完成 | 2026-10-06 |
-| 2 | 多租户 | 请求上下文提取、`with_loader_criteria` 全局过滤、update/delete 越权防护 | 进行中 | — |
-| 3 | RBAC | 依赖工厂 `require_permission()`、权限码常量收敛、权限集下发 | 未开始 | — |
+| 2 | 多租户 | 请求上下文提取、`with_loader_criteria` 全局过滤、update/delete 越权防护 | 已完成 | 2026-10-14 |
+| 3 | RBAC | 依赖工厂 `require_permission()`、权限码常量收敛、权限集下发 | 进行中 | — |
 | 4 | 内容主线 | 自引用树、翻译表 upsert、`selectinload` 防 N+1、软删除、组合索引 | 未开始 | — |
 | 5 | 版本管理 | 保存即快照、回滚 = 快照写回 + 版本递增、事务一致性 | 未开始 | — |
 | 6 | 审核发布 | 显式状态机、乐观锁 `rowcount` 判定、`apply_async(eta=...)` + 分布式锁 | 未开始 | — |
@@ -106,11 +106,23 @@
 | T2.2b | TenantIdMixin + 全局过滤 | SQL 日志可见自动注入的 WHERE tenant_id | 已完成 | 2026-10-12 | 8 模型挂 mixin（autogenerate 空迁移验证）；session.py do_orm_execute 拦截器；SQL 日志确认 WHERE 注入 + 无上下文放行 | 关键决策：上下文 None 时放行（鸡生蛋问题），安全靠 T2.3 越权测试补偿；卫语句跳过 relationship/column load |
 | T2.3a | 查询越权验证 | A 租户 token 查 B 租户数据 → 不可见 | 已完成 | 2026-10-12 | 种子扩至双租户；双 token 请求同接口各见 1 条、tenant_id 各归各（DB 实有 2 条用户） | 幂等种子 + 复合唯一约束知识点落地 |
 | T2.3b | 写操作越权防护 | B 租户 token 改 A 租户数据 → 404/403 | 已完成 | 2026-10-12 | 临时 PATCH 路由四条 curl：本租户 200 ×2 / 跨租户 404 ×2 | 模式：tenant_id 进 WHERE + rowcount==0 → 404（隐藏资源存在性）；与阶段 6 乐观锁同源 |
-| T2.4 | 租户 CRUD + 阶段验收 | 前端联调 + docs/06 验收清单全绿 | 进行中 | — | T2.4a GET /tenants 分页+搜索（Query 校验、Page[T] 泛型、双查询共享 WHERE）；T2.4b POST 新增（约束兜底+IntegrityError→409、refresh）；用户自主发现输入校验缺口→TenantCreateReq 上 Field/Literal 约束；管理路由补认证闸门（无 token 401） | 权限守卫 tenant:manage 留待阶段 3；契约偏差 X-Tenant-Id header → token 派生，收尾修 docs/03 |
+| T2.4 | 租户 CRUD + 阶段验收 | 前端联调 + docs/06 验收清单全绿 | 已完成 | 2026-10-14 | T2.4a GET /tenants 分页+搜索（Query 校验、Page[T] 泛型、双查询共享 WHERE）；T2.4b POST 新增（约束兜底+IntegrityError→409、refresh）；用户自主发现输入校验缺口→TenantCreateReq 上 Field/Literal 约束；管理路由补认证闸门（无 token 401）；T2.4c PATCH 更新 + DELETE 软删除（tenant_id 进 WHERE + rowcount==0→404 防越权，与 T2.3b 同源）+ 前端租户管理交互联调跑通（分页/搜索/增删改全流程） | 权限守卫 tenant:manage 转阶段 3 遗留 #5；契约偏差 X-Tenant-Id header → token 派生，docs/03 待修（见遗留 #6） |
+
+**阶段 2 收尾清单**（T2.4 时逐项勾选）：
+
+- [x] 前端联调通过（租户管理页分页 / 搜索 / 新增 / 编辑 / 删除全流程）
+- [x] docs/06 阶段 2 验收清单确认（跨租户越权 404 已由 T2.3a/b 双 token 实证，复测通过）
+- [x] 无回归（阶段 1 完成信号抽查通过）
 
 ### 阶段 3 · RBAC
 
-> 临近时细拆。
+| # | 微任务 | 完成信号（验收口径） | 状态 | 完成日期 | 产出 / 证据 | 备注 |
+| --- | --- | --- | --- | --- | --- | --- |
+| T3.1a | 依赖工厂 require_permission | 有权限 200 / 无权限 403 / 无 token 401 | 已完成 | 2026-10-14 | 闭包工厂（外层同步 def + 内层 async checker）+ 4 个租户管理路由挂 tenant:manage；403/200 实测通过；GET /tenants 列表补认证闸门（T2.4b 漏网）；连带修复 UserOut.roles 序列化（field_validator mode=before 把 Role 对象归一为角色码） | 关键课：async 工厂返回 coroutine 的坑；401（认证）vs 403（授权）职责分离；selectin 预加载原理 |
+| T3.2a | 权限码常量收敛 + 种子内置角色 | 路由零魔法字符串；种子跑完 psql 可见内置角色 | 已完成 | 2026-10-14 | core/permissions.py 常量类 + 4 路由换常量；seed.py 补内置角色（幂等：复合查重 + in-collection 守卫 + relationship append）；清表重跑×2 + psql 计数 + 种子 admin 登录 200 验证 | 顺带修复 pyproject [project.scripts] seed 入口指向错误（迟到账单：配置类完成信号要实跑入口） |
+| T3.2b | 权限集下发 | 登录响应 permissions 字段返回真实权限码集合 | 已完成 | 2026-10-14 | services/auth.py get_user_permissions（同步函数 + 集合推导并集去重 + sorted）；login 路由接线；curl 验证 ["tenant:manage"]，前端登录后按钮显隐生效（用户浏览器确认） | 知识点：selectin 预加载复用（不重复查库）、Set 去重、sorted 稳定输出 |
+| T3.3 | 角色 CRUD | 前端角色管理页联调 | 未开始 | — | | |
+| T3.4 | 成员 CRUD + 阶段验收 | docs/06 阶段 3 验收清单全绿 | 未开始 | — | | |
 
 ### 阶段 4 · 内容主线
 
@@ -154,7 +166,8 @@
 | 2026-10-05 | #2 教训：T1.1b 原完成信号只验「文件存在」未验「依赖齐全」；docs/08 已补充 `uv tree` 核对步骤 | 流程 | — | 已改进 |
 | 2026-10-05 | #3 索引覆盖计划：user_roles.role_id / content_tags.tag_id（关联表反向）及 reviews 等表的 tenant_id 无索引；PG 不为 FK 自动建索引 | 阶段 4 内容域 + T1.9 阶段验收 | T1.4 期间统一梳理 | 已登记 |
 | 2026-10-05 | #4 requestId/traceId 需求（用户提出，公司实践背书）：阶段 7 实现时决策响应头 X-Request-Id vs body 字段（后者需改 docs/03 契约），并补日志系统 + contextvars 设计 | 阶段 7 工程化收尾 | 阶段 7 第一个待办 | 已登记 |
-| 2026-10-13 | #5 阶段 2 已知安全缺口：/tenants 管理接口（POST/PATCH/DELETE/分页列表）仅认证未授权，任何登录用户可跨租户管理平台资源。设计上属授权缺失而非隔离缺失（tenants 为平台资源，不适用租户过滤）。阶段 3 `require_permission("tenant:manage")` 落地后关闭 | 阶段 3 | 阶段 3 第一个任务 | 已登记 |
+| 2026-10-13 | #5 阶段 2 已知安全缺口：/tenants 管理接口（POST/PATCH/DELETE/分页列表）仅认证未授权，任何登录用户可跨租户管理平台资源。设计上属授权缺失而非隔离缺失（tenants 为平台资源，不适用租户过滤）。阶段 3 `require_permission("tenant:manage")` 落地后关闭 | 阶段 3 | 阶段 3 第一个任务 | 已关闭（2026-10-14 T3.1a 落地并实测 403/200） |
+| 2026-10-14 | #6 契约偏差：docs/03 原设计通过 X-Tenant-Id header 传递租户标识，实际实现为 token 派生（T2.2a）。需回头修正 docs/03 契约文档，消除文档与实现不一致 | docs/03 API 契约 | 阶段 3 开始前 | 已关闭（2026-10-14 修订 docs/03 第 1 节） |
 
 ---
 
@@ -193,3 +206,7 @@
 | 2026-10-12 | 阶段 2 拆解为 7 个微任务（T2.1a–T2.4）；T2.1a/T2.1b 完成验收（概念梳理 + ContextVar 协程隔离）；进入 T2.2a |
 | 2026-10-12 | T2.2a 完成验收（get_current_tenant_id 依赖，review 一轮通过）；进入 T2.2b |
 | 2026-10-12 | T2.2b 完成验收（TenantIdMixin 8 表挂载 + with_loader_criteria 全局过滤，SQL 日志实证）——多租户核心机制落地；进入 T2.3a |
+| 2026-10-14 | T2.4a/T2.4b 完成验收（分页+搜索、POST 新增、输入校验、认证闸门）；T2.4c PATCH/DELETE + 前端租户管理交互跑通（用户确认）；T2.4 阶段验收通过——**阶段 2 完成（7/7）**，进入阶段 3 |
+| 2026-10-14 | 阶段 3 拆解为 5 个微任务（T3.1a–T3.4）；T3.1a 完成验收（require_permission 守卫 + 列表认证闸门补漏 + UserOut.roles 序列化修复，403/200/401 实测）；遗留 #5 关闭；进入 T3.2a |
+| 2026-10-14 | T3.2a 完成验收（权限码常量收敛 + 种子内置角色，清表重跑幂等验证通过；连带修复 seed 入口配置）；进入 T3.2b |
+| 2026-10-14 | T3.2b 完成验收（权限集下发，curl + 前端按钮显隐实测通过）；进入 T3.3 |

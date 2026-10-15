@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal, Annotated
 
 from pydantic import EmailStr, StringConstraints, Field
@@ -14,6 +15,18 @@ TenantCode = Annotated[
         pattern=r"^[a-z0-9-]+$",
     )
 ]
+
+
+class TenantOut(CamelModel):
+    id: str
+    name: str
+    code: str
+    status: str
+    plan: str
+    max_users: int
+    contact_name: str | None = None
+    contact_email: str | None = None
+    created_at: datetime | None = None
 
 
 class TenantCreateReq(CamelModel):
